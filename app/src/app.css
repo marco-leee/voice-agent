@@ -1,0 +1,81 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn-svelte/tailwind.css";
+@import "@fontsource/dm-sans/400.css";
+@import "@fontsource/dm-sans/500.css";
+@import "@fontsource/raleway/300.css";
+@import "@fontsource/raleway/400.css";
+@import "@fontsource/raleway/500.css";
+@import "@fontsource/fira-code/400.css";
+
+/* ZenGrid — DESIGN.md */
+@theme {
+	--font-sans:
+		"DM Sans", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+	--font-mono: "Fira Code", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+	--radius-sm: 2px;
+	--radius-md: 4px;
+	--radius-lg: 4px;
+	--radius-xl: 4px;
+	--radius-2xl: 6px;
+
+	--color-background: #faf9f6;
+	--color-foreground: #78716c;
+	--color-card: #ffffff;
+	--color-card-foreground: #78716c;
+	--color-popover: #ffffff;
+	--color-popover-foreground: #78716c;
+	--color-primary: #78716c;
+	--color-primary-foreground: #ffffff;
+	--color-secondary: #f5f4f1;
+	--color-secondary-foreground: #78716c;
+	--color-muted: #f5f4f1;
+	--color-muted-foreground: #a8a29e;
+	--color-accent: #f5f4f1;
+	--color-accent-foreground: #78716c;
+	--color-destructive: #dc2626;
+	--color-destructive-foreground: #ffffff;
+	--color-border: #a8a29e;
+	--color-input: #a8a29e;
+	--color-ring: #78716c;
+}
+
+@layer base {
+	* {
+		@apply border-border outline-ring/50;
+	}
+	html {
+		@apply font-sans antialiased;
+	}
+	body {
+		@apply bg-background text-[15px] leading-[1.7] text-foreground;
+	}
+	h1,
+	h2,
+	h3,
+	h4 {
+		font-family: "Raleway", ui-sans-serif, system-ui, sans-serif;
+		color: #78716c;
+	}
+	h1 {
+		font-size: 2.5rem;
+		font-weight: 300;
+		line-height: 1.15;
+	}
+	h2 {
+		font-size: 2rem;
+		font-weight: 300;
+		line-height: 1.2;
+	}
+	h3 {
+		font-size: 1.5rem;
+		font-weight: 500;
+		line-height: 1.25;
+	}
+	h4 {
+		font-size: 1.125rem;
+		font-weight: 500;
+		line-height: 1.35;
+	}
+}
