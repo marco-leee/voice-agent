@@ -1,0 +1,3 @@
+{
+    "python.defaultInterpreterPath": "./services/.venv/bin/python"
+}
