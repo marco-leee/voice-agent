@@ -49,7 +49,7 @@
 			class="border-border flex min-h-20 shrink-0 items-center px-4 py-3 md:px-6"
 		>
 			<h1 class="font-[family-name:'Raleway'] text-xl font-light tracking-tight text-[#78716c] md:text-2xl">
-				Conversation agent
+				Conversation agent (Shall take a moment to load for the first time. A pictogram will appear when ready.)
 			</h1>
 		</header>
 
