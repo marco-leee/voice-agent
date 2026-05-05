@@ -1,10 +1,10 @@
 <script lang="ts">
 	import AudioFrequencyVisualizer from "$lib/AudioFrequencyVisualizer.svelte";
 	import { Button } from "$lib/components/ui/button";
-	import { ConversationAgent, MachineActions, MachineStates } from "$lib";
+	import { ConversationAgentXState, MachineActions, MachineStates } from "$lib";
 	import type { ConversationAgentState } from "$lib/client.agent";
 
-	const state: ConversationAgentState = $state({
+	const agentState: ConversationAgentState = $state({
 		state: MachineStates.INIT,
 		gen: 0,
 		active: null,
@@ -18,7 +18,7 @@
 		systemPrompt: "",
 	});
 
-	const agent = new ConversationAgent({ strict: true, publicState: state });
+	const agent = new ConversationAgentXState({ strict: true, publicState: agentState });
 </script>
 
 <div

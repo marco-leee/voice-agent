@@ -6,10 +6,17 @@ import type { PreTrainedModel, Processor } from "@huggingface/transformers";
 import { TextStreamer, load_image } from "@huggingface/transformers";
 import type { AutomaticSpeechRecognitionPipeline } from "@huggingface/transformers";
 
+const DEFAULT_SYSTEM_CONTENT =
+	"You are a helpful voice assistant. The user speaks in short audio clips. Answer in clear, concise text suitable for text-to-speech. Do not transcribe or echo their words unless they explicitly ask for a transcript.";
+
 export type ChatMessage = {
 	role: "system" | "user" | "assistant";
 	content: string;
 };
+
+export function defaultConversationMessages(): ChatMessage[] {
+	return [{ role: "system", content: DEFAULT_SYSTEM_CONTENT }];
+}
 
 export async function transcribeUtterance(
 	stt: AutomaticSpeechRecognitionPipeline,
