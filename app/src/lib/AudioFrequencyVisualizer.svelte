@@ -50,24 +50,6 @@
 			stream.getAudioTracks().some((t) => t.readyState !== "ended");
 
 		if (!live || !canvas || !container) {
-			const c = canvas;
-			if (c) {
-				const ctx2d = c.getContext("2d");
-				if (ctx2d) {
-					const w = c.width;
-					const h = c.height;
-					const dpr = w / Math.max(1, container?.getBoundingClientRect().width ?? 1);
-					ctx2d.fillStyle = Z.bg;
-					ctx2d.fillRect(0, 0, w, h);
-					const midY = Math.floor(h / 2);
-					ctx2d.fillStyle = Z.line;
-					ctx2d.fillRect(0, midY, w, Math.max(1, dpr));
-					ctx2d.fillStyle = Z.idleText;
-					ctx2d.font = "13px DM Sans, system-ui, sans-serif";
-					ctx2d.textAlign = "center";
-					ctx2d.fillText(idleHint, w / 2, h / 2);
-				}
-			}
 			return () => {};
 		}
 

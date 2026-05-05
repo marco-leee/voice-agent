@@ -1,7 +1,7 @@
 <script lang="ts">
 	import AudioFrequencyVisualizer from "$lib/AudioFrequencyVisualizer.svelte";
 	import { Button } from "$lib/components/ui/button";
-	import { ConversationAgentXState, MachineActions, MachineStates } from "$lib";
+	import { ConversationAgent, MachineActions, MachineStates } from "$lib";
 	import type { ConversationAgentState } from "$lib/client.agent";
 
 	const agentState: ConversationAgentState = $state({
@@ -18,7 +18,7 @@
 		systemPrompt: "",
 	});
 
-	const agent = new ConversationAgentXState({ strict: true, publicState: agentState });
+	const agent = new ConversationAgent({ strict: true, publicState: agentState });
 </script>
 
 <div
@@ -63,7 +63,7 @@
 					User speech
 				</h2>
 				<AudioFrequencyVisualizer
-					mediaStream={state.micMediaStream}
+					mediaStream={agentState.micMediaStream}
 					idleHint="Mic spectrum appears after Boot when the stream is live."
 				/>
 			</section>
@@ -75,16 +75,16 @@
 					Response playback
 				</h2>
 				<AudioFrequencyVisualizer
-					mediaStream={state.playbackMediaStream}
+					mediaStream={agentState.playbackMediaStream}
 					idleHint="Spectrum appears while TTS audio is playing (captureStream from playback)."
 				/>
-				{#if state.playbackTranscript}
+				{#if agentState.playbackTranscript}
 					<p
 						class="border-border bg-secondary text-foreground mb-3 whitespace-pre-wrap break-words rounded-[4px] border px-3.5 py-2.5 text-[15px] leading-[1.7]"
 					>
-						{state.playbackTranscript}
+						{agentState.playbackTranscript}
 					</p>
-				{:else if state.state === MachineStates.PLAY_RESPONSE}
+				{:else if agentState.state === MachineStates.PLAY_RESPONSE}
 					<p
 						class="border-border bg-secondary text-muted-foreground mb-3 whitespace-pre-wrap break-words rounded-[4px] border px-3.5 py-2.5 text-[15px] leading-[1.7] italic"
 					>
@@ -105,20 +105,20 @@
 		>
 			<div
 				class="text-foreground max-w-[min(100%,18rem)] text-right text-[13px] leading-snug md:max-w-xs"
-				aria-label="State machine status"
+				aria-label="agentState machine status"
 			>
 				<dl class="m-0 grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 text-left">
 					<dt class="text-muted-foreground font-medium whitespace-nowrap">FSM</dt>
-					<dd class="m-0 font-mono text-[12px] break-words">{state.state}</dd>
+					<dd class="m-0 font-mono text-[12px] break-words">{agentState.state}</dd>
 					<dt class="text-muted-foreground font-medium">Gen</dt>
-					<dd class="m-0 font-mono">{state.gen}</dd>
+					<dd class="m-0 font-mono">{agentState.gen}</dd>
 					<dt class="text-muted-foreground font-medium">Mic</dt>
 					<dd class="m-0 font-mono text-[11px] break-words">
-						{state.micStreamId ?? "—"}
+						{agentState.micStreamId ?? "—"}
 					</dd>
 					<dt class="text-muted-foreground font-medium">Queues</dt>
 					<dd class="m-0 font-mono text-[11px]">
-						A{state.audioQueue.length} · R{state.responseQueue.length}
+						A{agentState.audioQueue.length} · R{agentState.responseQueue.length}
 					</dd>
 				</dl>
 			</div>
@@ -163,7 +163,7 @@
 				role="region"
 				aria-label="Message list"
 			>
-				{#if state.systemPrompt}
+				{#if agentState.systemPrompt}
 					<div class="mb-4 min-w-0">
 						<div
 							class="text-muted-foreground mb-1 text-[11px] font-medium tracking-wide uppercase"
@@ -173,19 +173,19 @@
 						<div
 							class="border-border bg-secondary text-foreground rounded-[4px] border px-3 py-2 text-[12px] leading-snug break-words whitespace-pre-wrap"
 						>
-							{state.systemPrompt}
+							{agentState.systemPrompt}
 						</div>
 					</div>
 				{/if}
 
-				{#if state.chatHistory.length === 0}
+				{#if agentState.chatHistory.length === 0}
 					<p class="text-muted-foreground m-0 text-[13px] leading-relaxed">
 						No user or assistant messages yet. Speak after booting and ending a listening turn to
 						see turns here.
 					</p>
 				{:else}
 					<ul class="m-0 flex list-none flex-col gap-4 p-0">
-						{#each state.chatHistory as turn, i (i)}
+						{#each agentState.chatHistory as turn, i (i)}
 							<li class="min-w-0">
 								<div
 									class="text-muted-foreground mb-1 text-[11px] font-medium tracking-wide uppercase"
