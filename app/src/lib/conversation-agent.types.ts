@@ -1,3 +1,11 @@
+/**
+ * Init -> Preparing -> Ready
+ * 
+ * Ready -> Listening -> Sending -> Waiting Response -> Play Response (This loops until shutdown)
+ * 
+ * Closing -> Closed (At any point, the user can shutdown the agent)
+ * 
+*/
 export enum MachineStates {
 	INIT = "INIT",
 	PREPARING = "PREPARING",
@@ -23,7 +31,15 @@ export enum MachineActions {
 	INTERRUPT_PLAYBACK = "INTERRUPT_PLAYBACK",
 	SHUTDOWN = "SHUTDOWN",
 	CLOSED = "CLOSED",
+	// Others
+	ERROR = "ERROR",
 }
+
+export type MachineEvents = MachineActions
+
+export type MachineActionHandler = (ctx: ActionHandlerContext) => void | Promise<void>;
+
+export type MachineActionHandlers = Record<MachineAction, MachineActionHandler>;
 
 export type MachineState = keyof typeof MachineStates;
 export type MachineAction = keyof typeof MachineActions;

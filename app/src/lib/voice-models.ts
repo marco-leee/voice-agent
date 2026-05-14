@@ -11,12 +11,70 @@ import {
 	pipeline,
 	type AutomaticSpeechRecognitionPipeline,
 } from "@huggingface/transformers";
+import * as ort from "onnxruntime-web";
+import { createSileroVadEngine } from "./silero-vad-engine.ts";
+import { createSmartTurnEngine } from "./smart-turn-engine.ts";
+import type { ListenEngines } from "./listen-audio-orchestrator.types.ts";
+
+/** ONNX Runtime WASM base; keep version aligned with `onnxruntime-web` in package.json. */
+const ONNX_WASM_BASE =
+	"https://cdn.jsdelivr.net/npm/onnxruntime-web@1.26.0/dist/";
+
+export function configureClientOnnxWasm(): void {
+	ort.env.wasm.wasmPaths = ONNX_WASM_BASE;
+	ort.env.wasm.numThreads = 1;
+}
+
+export async function loadListenEngines(
+	signal: AbortSignal,
+): Promise<ListenEngines | null> {
+	configureClientOnnxWasm();
+	try {
+		const [silero, smartTurn] = await Promise.all([
+			createSileroVadEngine(),
+			createSmartTurnEngine({
+				progress_callback: (info) => {
+					if (info.status === "progress") {
+						const p = Math.round((info as { progress?: number }).progress ?? 0);
+						if (p % 25 === 0) console.log("[prepare] smart-turn FX", p);
+					}
+				},
+			}),
+		]);
+		if (signal.aborted) {
+			await silero.dispose();
+			await smartTurn.dispose();
+			return null;
+		}
+		return { silero, smartTurn };
+	} catch (e) {
+		console.warn("[prepare] listen ML failed — VAD/orchestrator RMS fallback", e);
+		return null;
+	}
+}
+
+export async function disposeListenEngines(
+	listen: ListenEngines | null,
+): Promise<void> {
+	if (!listen) return;
+	try {
+		await listen.silero.dispose();
+	} catch {
+		/* ignore */
+	}
+	try {
+		await listen.smartTurn.dispose();
+	} catch {
+		/* ignore */
+	}
+}
 
 export type VoiceModelBundle = {
 	stt: AutomaticSpeechRecognitionPipeline;
 	processor: Processor;
 	llm: PreTrainedModel;
 	tts: KokoroTTS;
+	listen: ListenEngines | null;
 };
 
 export type MicCaptureResult = {
@@ -159,12 +217,14 @@ export async function prepareVoiceStack(
 		return { ...mic, models: null };
 	}
 
-	const [llmPack, tts] = await Promise.all([
+	const [llmPack, tts, listen] = await Promise.all([
 		loadGemmaProcessorAndModel(),
 		loadKokoroTts(),
+		loadListenEngines(signal),
 	]);
 	if (!isAlive()) {
 		mic.stream?.getTracks().forEach((t) => t.stop());
+		await disposeListenEngines(listen);
 		return { ...mic, models: null };
 	}
 
@@ -175,6 +235,7 @@ export async function prepareVoiceStack(
 			processor: llmPack.processor,
 			llm: llmPack.llm,
 			tts,
+			listen,
 		},
 	};
 }

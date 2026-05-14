@@ -32,10 +32,11 @@
 		"wrangler": "^4.47.0"
 	},
 	"dependencies": {
-		"@huggingface/transformers": "^4.1.0",
+		"@huggingface/transformers": "^4.2.0",
 		"@ricky0123/vad-web": "^0.0.30",
 		"@tailwindcss/vite": "^4.2.3",
 		"kokoro-js": "^1.2.1",
+		"onnxruntime-web": "^1.26.0",
 		"tailwindcss": "^4.2.3",
 		"xstate": "^5.31.0"
 	}

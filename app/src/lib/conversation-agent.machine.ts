@@ -19,8 +19,12 @@ import type {
 	Processor,
 } from "@huggingface/transformers";
 import { concatFloatChunks, normaliseAudio, resampleLinear } from "./audio.ts";
-import { runVadListening } from "./vad.ts";
-import { prepareVoiceStack } from "./voice-models.ts";
+import { runListenOrchestrator } from "./listen-audio-orchestrator.ts";
+import {
+	disposeListenEngines,
+	prepareVoiceStack,
+} from "./voice-models.ts";
+import type { ListenEngines } from "./listen-audio-orchestrator.types.ts";
 import { playTtsLine } from "./tts-playback.ts";
 import {
 	transcribeUtterance,
@@ -42,7 +46,7 @@ import {
 } from "xstate";
 
 const INTERNAL = {
-	SPEECH_CHUNK: "internal.speechChunk",
+	COMMIT_LISTENING_TURN: "internal.commitListeningTurn",
 	CAPTURE_SAMPLE_RATE: "internal.captureSampleRate",
 	RESPONSE_TEXT_CHUNK: "internal.responseTextChunk",
 	WAIT_RESPONSE_DONE: "internal.waitResponseDone",
@@ -85,6 +89,8 @@ const TRANSITIONS: TransitionTable = {
 	},
 };
 
+
+
 type AgentContext = {
 	gen: number;
 	active: AbortController | null;
@@ -103,6 +109,7 @@ type AgentContext = {
 	processor: Processor | null;
 	llm: PreTrainedModel | null;
 	tts: KokoroTTS | null;
+	listen: ListenEngines | null;
 };
 
 type AgentInput = {
@@ -112,9 +119,8 @@ type AgentInput = {
 type AgentEvents =
 	| { type: MachineAction }
 	| {
-			type: typeof INTERNAL.SPEECH_CHUNK;
-			chunk: Float32Array;
-			rms: number;
+			type: typeof INTERNAL.COMMIT_LISTENING_TURN;
+			pcm: Float32Array;
 	  }
 	| { type: typeof INTERNAL.CAPTURE_SAMPLE_RATE; hz: number }
 	| { type: typeof INTERNAL.RESPONSE_TEXT_CHUNK; text: string }
@@ -177,10 +183,12 @@ export const conversationAgentMachine = setup({
 		vadListen: fromCallback(({ sendBack, input }) => {
 			const ac = new AbortController();
 			const { signal } = ac;
-			const stream =
-				(input as { stream: MediaStream | null } | null | undefined)?.stream ??
-				null;
-			const localQueue: Float32Array[] = [];
+			const inp = input as {
+				stream: MediaStream | null;
+				listen: ListenEngines | null;
+			} | null;
+			const stream = inp?.stream ?? null;
+			const listen = inp?.listen ?? null;
 
 			void (async () => {
 				try {
@@ -193,35 +201,34 @@ export const conversationAgentMachine = setup({
 						console.warn(
 							"[listen] no live microphone track; ending turn with empty capture",
 						);
-						sendBack({ type: MachineActions.END_LISTENING_TURN });
+						sendBack({
+							type: INTERNAL.COMMIT_LISTENING_TURN,
+							pcm: new Float32Array(0),
+						});
 						return;
 					}
 
-					await runVadListening(stream!, signal, {
+					await runListenOrchestrator(stream!, signal, listen, {
 						isAlive: () => !signal.aborted,
 						onSampleRate: (hz) =>
 							sendBack({ type: INTERNAL.CAPTURE_SAMPLE_RATE, hz }),
-						onSpeechChunk: (chunk, { rms }) => {
-							localQueue.push(chunk);
+						onRelease: (pcm, reason) => {
+							if (import.meta.env.DEV) {
+								console.log(
+									"[listen] release",
+									reason,
+									"samples",
+									pcm.length,
+								);
+							}
 							sendBack({
-								type: INTERNAL.SPEECH_CHUNK,
-								chunk: Float32Array.from(chunk),
-								rms,
+								type: INTERNAL.COMMIT_LISTENING_TURN,
+								pcm: Float32Array.from(pcm),
 							});
-							console.log(
-								"[listen] speech rms",
-								rms.toFixed(4),
-								"→ queue len",
-								localQueue.length,
-							);
-						},
-						hasQueuedUtterance: () => localQueue.length > 0,
-						onEndTurn: () => {
-							sendBack({ type: MachineActions.END_LISTENING_TURN });
 						},
 					});
 				} catch (e) {
-					console.error("[vad listen]", e);
+					console.error("[listen orchestrator]", e);
 				}
 			})();
 
@@ -404,12 +411,16 @@ export const conversationAgentMachine = setup({
 				input,
 				signal,
 			}: {
-				input: { micMediaStream: MediaStream | null };
+				input: {
+					micMediaStream: MediaStream | null;
+					listen: ListenEngines | null;
+				};
 				signal: AbortSignal;
 			}) => {
 				if (signal.aborted) return {};
 				console.log("[closing] draining queues / releasing mic");
 				input.micMediaStream?.getTracks().forEach((t) => t.stop());
+				await disposeListenEngines(input.listen);
 				return {};
 			},
 		),
@@ -447,6 +458,7 @@ export const conversationAgentMachine = setup({
 		processor: null,
 		llm: null,
 		tts: null,
+		listen: null,
 	}),
 	on: {
 		[INTERNAL.CLEAR_CHAT_HISTORY]: {
@@ -499,6 +511,7 @@ export const conversationAgentMachine = setup({
 											processor: Processor;
 											llm: PreTrainedModel;
 											tts: KokoroTTS;
+											listen: ListenEngines | null;
 									  }
 									| undefined;
 							};
@@ -508,6 +521,7 @@ export const conversationAgentMachine = setup({
 								next.processor = out.models.processor;
 								next.llm = out.models.llm;
 								next.tts = out.models.tts;
+								next.listen = out.models.listen;
 							}
 							if (out.ok && out.stream) {
 								next.micMediaStream = out.stream;
@@ -569,16 +583,31 @@ export const conversationAgentMachine = setup({
 		[MachineStates.LISTENING]: {
 			invoke: {
 				src: "vadListen",
-				input: ({ context }) => ({ stream: context.micMediaStream }),
+				input: ({ context }) => ({
+					stream: context.micMediaStream,
+					listen: context.listen,
+				}),
 			},
 			on: {
-				[INTERNAL.SPEECH_CHUNK]: {
-					actions: assign({
-						audioQueue: ({ context, event }) =>
-							event.type === INTERNAL.SPEECH_CHUNK
-								? [...context.audioQueue, Float32Array.from(event.chunk)]
-								: context.audioQueue,
-					}),
+				[INTERNAL.COMMIT_LISTENING_TURN]: {
+					target: MachineStates.SENDING,
+					actions: [
+						{ type: "bumpGenRotateAbort" },
+						assign({
+							audioQueue: ({ event }) =>
+								event.type === INTERNAL.COMMIT_LISTENING_TURN
+									? [Float32Array.from(event.pcm)]
+									: [],
+						}),
+						({ context }) =>
+							runHandler(
+								context.handlers,
+								MachineActions.END_LISTENING_TURN,
+								MachineStates.LISTENING,
+								MachineStates.SENDING,
+								handlerSignal(context),
+							),
+					],
 				},
 				[INTERNAL.CAPTURE_SAMPLE_RATE]: {
 					actions: assign({
@@ -800,7 +829,10 @@ export const conversationAgentMachine = setup({
 		[MachineStates.CLOSING]: {
 			invoke: {
 				src: "closeActor",
-				input: ({ context }) => ({ micMediaStream: context.micMediaStream }),
+				input: ({ context }) => ({
+					micMediaStream: context.micMediaStream,
+					listen: context.listen,
+				}),
 				onDone: {
 					target: MachineStates.CLOSED,
 					actions: [
@@ -812,6 +844,7 @@ export const conversationAgentMachine = setup({
 							micStreamId: () => null,
 							playbackTranscript: () => null,
 							playbackMediaStream: () => null,
+							listen: () => null,
 						}),
 						({ context }) =>
 							runHandler(

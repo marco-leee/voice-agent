@@ -49,6 +49,10 @@ export function handleClosed(ctx: ActionHandlerContext): void {
 	logAction("CLOSED", ctx);
 }
 
+export function handleError(ctx: ActionHandlerContext): void {
+	logAction("ERROR", ctx);
+}
+
 /** Default handler map — one named function per action. */
 export const defaultActionHandlers: ActionHandlers = {
 	BOOT: handleBoot,
@@ -61,4 +65,5 @@ export const defaultActionHandlers: ActionHandlers = {
 	INTERRUPT_PLAYBACK: handleInterruptPlayback,
 	SHUTDOWN: handleShutdown,
 	CLOSED: handleClosed,
+	ERROR: handleError,
 };

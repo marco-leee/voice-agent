@@ -40,3 +40,10 @@ npm run build
 You can preview the production build with `npm run preview`.
 
 > To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+
+
+TODO
+
+1. Add barge in into the state machine
+2. Separate the business logic out from the state machine
+   1. For each event, create a handler function
