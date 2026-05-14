@@ -10,7 +10,8 @@
 		"prepare": "svelte-kit sync || echo ''",
 		"deploy": "vite build && wrangler deploy",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch"
+		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+		"test": "vitest run --config vitest.config.ts"
 	},
 	"devDependencies": {
 		"@fontsource/dm-sans": "^5.2.8",
@@ -29,6 +30,7 @@
 		"tw-animate-css": "^1.4.0",
 		"typescript": "^6.0.2",
 		"vite": "^8.0.7",
+		"vitest": "^3.2.4",
 		"wrangler": "^4.47.0"
 	},
 	"dependencies": {

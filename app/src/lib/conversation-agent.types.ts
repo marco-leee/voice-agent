@@ -41,3 +41,27 @@ export type ActionHandler = (
 ) => void | Promise<void>;
 
 export type ActionHandlers = Record<MachineAction, ActionHandler>;
+
+/** User-visible chat turns (system prompt excluded). */
+export type ChatHistoryEntry = {
+	role: "user" | "assistant";
+	content: string;
+};
+
+export interface ConversationAgentState {
+	state: MachineState;
+	gen: number;
+	active: AbortController | null;
+	micStreamId: string | null;
+	micMediaStream: MediaStream | null;
+	audioQueue: Float32Array[];
+	responseQueue: string[];
+	/** Text being spoken during PLAY_RESPONSE (null when idle). */
+	playbackTranscript: string | null;
+	/** MediaStream from TTS playback for spectrum UI (null when idle). */
+	playbackMediaStream: MediaStream | null;
+	/** Conversation turns for UI (mirrors machine messages minus system). */
+	chatHistory: ChatHistoryEntry[];
+	/** Current system message content (for history panel). */
+	systemPrompt: string;
+}
